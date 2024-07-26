@@ -479,10 +479,13 @@ export ANSIBLE_VAULT_IDENTITY_LIST="${query}@${script_path}\${CURRENT_VAULT_ID_L
 
 EOF
 
-  local short_name=${script_path%.*}
-  if [[ "$short_name" =~ .*"-client" ]]; then
-    _dir 6 "Script '$script_path' must ends with '-client' to be able to run with ansible."
+  # Safety checks
+  local short_name=$( basename "${script_path}" )
+  short_name=${short_name%.*}
+  if [[ ! "$short_name" =~ .*"-client"$ ]]; then
+    _die 6 "Script '$script_path' must ends with '-client' to be able to run with ansible."
   fi
+
 
 #  kc_debug
 }
