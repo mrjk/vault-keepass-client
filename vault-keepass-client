@@ -233,7 +233,7 @@ clish_help ()
   options=$(
     while IFS=, read -r flags meta desc _; do
       if [ ! -z "${flags:-}" ]; then
-        printf "  %-16s  %-20s  %s\n" "$flags" "$meta" "$desc"
+        printf "  %-22s  %-20s  %s\n" "$flags" "$meta" "$desc"
       fi
     done <<< "$(clish_help_options $func)"
   )
@@ -242,7 +242,7 @@ clish_help ()
   commands=$(
     while IFS=, read -r flags meta desc _; do
       if [ ! -z "${flags:-}" ]; then
-        printf "  %-16s  %-20s  %s\n" "$flags" "$meta" "$desc"
+        printf "  %-22s  %-20s  %s\n" "$flags" "$meta" "$desc"
       fi
     done <<< "$(clish_help_subcommands ${func}__)"
   )
@@ -260,11 +260,17 @@ $options
   # Append extra infos
   if ! [[ "$func" == *"_"* ]]; then
     cat <<EOF
+query format:
+  $APP_NAME get [<PROFILE>] <KEY>
+  $APP_NAME query [<PROFILE>__]<KEY>
+
 examples:
-  $APP_NAME init .
-  $APP_NAME set cars.steering 1
+  $APP_NAME query my_key
+  $APP_NAME query default__my_key
+  $APP_NAME query store1__my_admin_pass
 
 info:
+  config dir: $APP_CONFIG_DIR
   author: $APP_AUTHOR ${APP_EMAIL:+<$APP_EMAIL>}
   version: ${APP_VERSION:-0.0.1}-${APP_STATUS:-beta}${APP_DATE:+ ($APP_DATE)}
   license: ${APP_LICENSE:-MIT}
@@ -443,7 +449,7 @@ cli__get()
 
 cli__query()
 {
-  : "QUERY,Get query values"
+  : "QUERY,Query values"
 
   # Parse query
   parse_query "${@:-$KC_QUERY}"
@@ -573,7 +579,7 @@ cli_options ()
     case "$1" in
 
       # ansible-vault compatibility
-      -q|-i|--vault-id|--query)
+      -i|--vault-id)
         : "ID,Set vault ID"
         # This option is greedy, because ansible-vault does not properly send arguments
         KC_IN_VAULT=true
@@ -620,30 +626,29 @@ cli_options ()
         shift 2
         ;;
 
-
+      # Generic
       -h|--help)
         : ",Show this help message"
         clish_help cli; 
         _die 0
         ;;
-      -n|--dry)
-        : ",Enable dry mode"
-        _log INFO "Dry mode enabled"
-        APP_DRY=true 
-        shift
-        ;;
-      #-f|--force)
-      #  : ",Enable force mode"
-      #  _log INFO "Force mode enabled"
-      #  APP_FORCE=true 
-      #  shift
-      #  ;;
-      -v|--verbose)
+      -v|-vv|-vvv|--verbose)
         : "[LEVEL],Set verbosity level"
-        [[ ! -z "${2:-}" ]] || _die 1 "Missing log level value"
-        _log INFO "Log level set to: $2"
-        APP_LOG_LEVEL=$2 
+        if [[ "$1" == "-vv" ]]; then
+          APP_LOG_LEVEL=DEBUG
+        elif [[ "$1" == "-vvv" ]]; then
+          APP_LOG_LEVEL=TRACE
+        else
+          [[ ! -z "${2:-}" ]] || _die 1 "Missing log level value"
+          APP_LOG_LEVEL=$2
+        fi
+        _log INFO "Log level set to: $APP_LOG_LEVEL"
         shift 2
+        ;;
+      -V|--version)
+        : ",Show version"
+        echo "$APP_VERSION"
+        exit 0
         ;;
       -*)
         _die 1 "Unknown option: $1"
